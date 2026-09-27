@@ -1,0 +1,13 @@
+# machine-local files (never commit)
+nvim/lua/local.lua
+nvim/spell/local*
+*.spl
+*.local
+.env*
+*.pem
+*.key
+kit/
+Brewfile.lock.json
+.DS_Store
+__pycache__/
+tools/npm/node_modules/
