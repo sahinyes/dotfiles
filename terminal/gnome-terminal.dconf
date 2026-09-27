@@ -1,0 +1,32 @@
+# GNOME Terminal settings, applied by scripts/gnome-terminal.sh (no sudo).
+#
+# dconf keyfile syntax: key=value, with values in GVariant text form written
+# exactly as `gsettings get` prints them, so a second run finds nothing to
+# change. Sections are not dconf paths (the profile path contains its UUID):
+#   [profile]  goes to the default profile
+#   [font]     goes to the default profile, only if fc-list finds the font
+#   [global]   goes to org.gnome.Terminal.Legacy.Settings
+
+[profile]
+# Block cursor that does not blink, no bell, keep all output
+cursor-shape='block'
+cursor-blink-mode='off'
+audible-bell=false
+scrollback-unlimited=true
+# Bold text stays bold instead of jumping to the bright palette colors
+bold-is-bright=false
+# Catppuccin Mocha (catppuccin/palette v1.7.1), the same palette family as
+# Neovim's built-in catppuccin colorscheme
+use-theme-colors=false
+foreground-color='#cdd6f4'
+background-color='#1e1e2e'
+palette=['#45475a', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#a6adc8', '#585b70', '#f37799', '#89d88b', '#ebd391', '#74a8fc', '#f2aede', '#6bd7ca', '#bac2de']
+
+[font]
+use-system-font=false
+font='JetBrainsMono Nerd Font Mono 12'
+
+[global]
+# F10 and Alt+letter go to the program (Neovim, tmux), not the menu bar
+menu-accelerator-enabled=false
+mnemonics-enabled=false

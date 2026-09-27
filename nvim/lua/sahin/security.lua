@@ -32,14 +32,24 @@ vim.o.modeline = false
 vim.o.modelineexpr = false
 vim.o.exrc = false
 
+-- OSC 52 is opt-in only (vim.g.osc52, applied by clipboard.lua). Otherwise
+-- Neovim asks the terminal at startup and, when no clipboard tool exists (SSH),
+-- silently uses OSC 52 for the + register.
+local termfeatures = vim.g.termfeatures or {}
+termfeatures.osc52 = false
+vim.g.termfeatures = termfeatures
+
 -- Git commands started by Neovim or plugins must never run a repo-controlled
--- fsmonitor hook. Appended to any existing GIT_CONFIG_COUNT.
+-- fsmonitor hook. Appended to any existing GIT_CONFIG_COUNT (the last entry
+-- wins in git), skipped when a parent Neovim already added it.
 local n = tonumber(vim.env.GIT_CONFIG_COUNT or '0') or 0
-local already = false
+local fsmonitor
 for i = 0, n - 1 do
-  if vim.env['GIT_CONFIG_KEY_' .. i] == 'core.fsmonitor' then already = true end
+  if (vim.env['GIT_CONFIG_KEY_' .. i] or ''):lower() == 'core.fsmonitor' then
+    fsmonitor = vim.env['GIT_CONFIG_VALUE_' .. i]
+  end
 end
-if not already then
+if fsmonitor ~= 'false' then
   vim.env['GIT_CONFIG_KEY_' .. n] = 'core.fsmonitor'
   vim.env['GIT_CONFIG_VALUE_' .. n] = 'false'
   vim.env.GIT_CONFIG_COUNT = tostring(n + 1)

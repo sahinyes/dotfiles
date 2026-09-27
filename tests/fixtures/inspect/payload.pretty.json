@@ -1,0 +1,11 @@
+{
+  "cmd": "$(touch PWNED)",
+  "tick": "`touch PWNED`",
+  "semi": ";rm -rf PWNED",
+  "nl": "a\nb",
+  "id": 12345678901234567890,
+  "ratio": 1.50e3,
+  "empty": {},
+  "list": [],
+  "u": "\u00e9 \"q\""
+}

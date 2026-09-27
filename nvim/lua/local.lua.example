@@ -1,0 +1,31 @@
+-- Machine-local settings. Copy to nvim/lua/local.lua (gitignored; install.sh
+-- writes it for you) and change what differs on this machine. Every value is
+-- optional: the value shown is the default used when the line is missing.
+
+-- Work laptop: stricter defaults (for example gopls gets GOPROXY=off).
+-- install.sh sets this from the marker file ~/.config/dotfiles/work.
+vim.g.work_laptop = false
+
+-- Where the notes live (:Tasks, :Capture, :Daily, telescope note pickers).
+vim.g.notes_dir = vim.fn.expand('~/notes')
+
+-- Up to 5 files opened with <leader>1 .. <leader>5.
+vim.g.hot_notes = {}
+-- vim.g.hot_notes = { '~/notes/inbox.md', '~/notes/work.md', '~/notes/bugbounty.md' }
+
+-- Directories that :TrustProject refuses unless you add ! (target code, CTFs,
+-- downloads). Globs; ** matches any depth.
+vim.g.never_trust_globs = { '~/Downloads/**', '~/bb/**', '~/CTF-Lab/**', '~/targets/**', '/tmp/**' }
+
+-- A Nerd Font is installed and used by the terminal: show icons instead of ASCII.
+vim.g.have_nerd_font = false
+
+-- Missing plugins are never cloned at startup (same as NVIM_OFFLINE=1).
+vim.g.nvim_offline = false
+
+-- Copy to the system clipboard over OSC 52 (for SSH). Off because a terminal
+-- that accepts OSC 52 lets any program's output rewrite your clipboard.
+vim.g.osc52 = false
+
+-- Motion hints (precognition.nvim) for the first weeks; set false to hide them.
+vim.g.precognition = true

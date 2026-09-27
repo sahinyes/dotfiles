@@ -1,0 +1,148 @@
+---
+title: notes
+project: notes
+tags: [migrated]
+date: 2026-01-01
+---
+
+- [ ] *Sunday: call grandma, water plants, fix the shelf.
+- [ ] Plan the weekend hike with the group and send the route; ask everyone about food and the train tickets
+
+- [ ] *Errands:
+  - [ ] *Post office parcel
+  - [ ] Pick up the dry cleaning
+  - [ ] Pharmacy: refill the allergy prescription before the pollen season starts
+  - [ ] Hardware store: screws M4×20, wall plugs, a spirit level and two brackets
+
+- [ ] Renew the domain for the family blog
+- [ ] Test the backup: `rsync -a --delete ~/photos/ /Volumes/backup/ | tee log.txt` && echo ok {done}
+- [ ] Write thank-you cards
+
+- [ ] Idea: a small app that shows which houseplants need water today: maybe a widget
+
+The shelf in the hallway is still wobbly; the wall is hollow behind the plaster.
+
+- [ ] Buy stamps
+- [ ] Charge the camera batteries
+- [ ] Find the spare key
+- [ ] Oil the door hinges
+- [ ] Sort the recycling
+- [ ] Fix the zip
+- [ ] Mend the jacket pocket
+- [ ] Hang the picture frame
+- [ ] Swap the winter clothes
+- [ ] Descale the kettle
+- [ ] Donate old books
+
+- [ ] Kitchen:
+  - [ ] Buy a new sponge
+  - [!] Fix the dripping tap ⚠
+  - [ ] Oven, what to check:
+    - [ ] Clean the racks
+  - [ ] Sharpen the knives, especially the bread knife
+  - [ ] Sort the spice drawer and throw away everything older than two years
+
+- [ ] Car: book the tyre change
+- [ ] Garage, things to sort before winter:
+  - [ ] Winter tyres
+  - [ ] Snow chains
+- [ ] Garden hose
+
+## learning
+
+- [ ] Rust: work through the ownership chapter and the borrow checker exercises, then write a small CLI tool
+- [ ] Go: finish the tour, then the concurrency part
+- [ ] SQL: window functions, CTEs and indexing: read the docs
+- [ ] Git: interactive rebase
+- [ ] Vim macros
+- [ ] Regex lookarounds
+- [ ] Docker: multi-stage builds
+- [ ] HTTP: caching headers
+- [ ] DNS: how the TTL works
+
+## house
+
+- [ ] Measure the living room for the new carpet and compare prices at three shops before deciding
+
+remember: the old carpet goes to the recycling centre, not the regular trash
+
+## health
+
+- [!] Book the annual check-up and ask about the knee
+- [!] Physio: 3×10 squats, 3×10 lunges, stretching 10 min
+- [!] Dentist: cleaning due
+- [!] Eye test: glasses
+- [ ] Vitamin D: 1000 IU per day in winter, ask the pharmacist {dose}
+
+- **garden**
+  - [!] Order seeds: tomatoes, basil
+  - [ ] Raised bed:
+    - [ ] Build the frame from larch boards, 2 m × 1 m, and line it with fleece so the soil does not wash out through the gaps
+- [!] Repair the fence ⚒
+- [ ] Paint the garden bench
+- [ ] Clean the barbecue grill: grate and tray
+
+## finance
+
+- [!] Pay the invoice: due end of month
+- [ ] Check the bank statement for the double charge
+- [ ] Cancel the unused credit card
+- [!] Tax return: collect receipts
+- [!] Donation receipts: scan them
+- [!] Ask about the tax deduction for the home office, the rules changed and the form needs the square metres of the room
+- [ ] Tax return:
+
+- [ ] Insurance:
+  - [ ] Compare the offers: three at least
+- [ ] Pension and savings plan:
+  - [ ] Retirement:
+    - [ ] Read the pension statement
+  - [ ] Ask about the interest rate
+  - [ ] Fund fees
+  - [ ] Check the beneficiary
+  - [ ] Update the address
+  - [ ] Ask for a meeting 🗓
+  - [ ] Review the risk profile
+  - [ ] Compare with last year
+
+- [ ] Subscriptions to cancel: music, video
+
+- **later**
+  - [ ] Sell the old bike online
+
+Some general thoughts about keeping these notes short. Or not.
+
+## links
+
+- [ ] read about the library app
+
+## docs
+
+Useful references for later é
+- [ ] https://example.com/docs/intro
+- [ ] https://example.com/docs/setup
+- [ ] https://example.org/guide?page=2&lang=de
+- [ ] https://example.net/faq_(v2)
+- [ ] https://example.com/docs/api
+
+- **video**
+  - [ ] Talk about gardening:
+    https://example.com/v/abc123
+
+a plain line at eight spaces
+another plain line + more text
+
+one more plain line
+
+- **tools**
+  - [ ] https://example.com/tools/list/
+
+Maybe later
+- [ ] https://example.com/a
+- [ ] https://example.com/b
+
+## someday
+
+- [ ] Learn the ukulele, or the accordion, or both; ask the music school about evening classes for beginners
+
+## waiting on

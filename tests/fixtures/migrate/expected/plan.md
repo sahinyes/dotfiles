@@ -1,0 +1,38 @@
+---
+title: plan
+project: plan
+tags: [migrated]
+date: 2026-01-01
+---
+
+Weekly plan for the reading group and the garden club – träumen erlaubt.
+
+--group----
+Meets Thursday evenings!
+Room: library.upstairs.east
+https://example.org/club/calendar.ics
+2nd floor | room B2 | 2026-01-15
+Size: 12
+Topic: X (next book to be announced soon)
+
+--garden----
+Plot: north.side.bed
+https://example.org/garden/map.pdf
+tools | shed A1 | 2026-02-01
+Water: every 2 days in summer
+Soil: loam, a bit sandy
+Contact: the club secretary
+Fees: see the notice board
+
+- [ ] Book the room for next season
+
+This is a long sentence that explains the plan in some detail, mentions a few more things that are not important right now and then ends with a colon, so it is an introduction to the list below and not a heading:
+- [ ] Send the invite
+- [ ] Collect the book votes ü
+- [ ] Buy snacks and drinks for the first meeting
+- [ ] Ask Émile whether he can bring the projector and the long HDMI cable for the slides
+
+Next steps
+TBD ✓ 12.01.2026, 18:30
+✓ Room-Booking confirmed ✓ 2026-01-12
+3 people(s) ✓ said yes 1/12 ✓ 2 are maybe. The rest did not answer yet, ask again next week ✓ ok

@@ -1,0 +1,71 @@
+# tools.lock: every file install.sh downloads, pinned by sha256.
+# One row per file; columns are separated by spaces; "-" means empty.
+#
+#   name     tool name (bin/gz rows: also the command name in ~/.local/bin)
+#   version  release tag (ts-parser and git rows: the pinned commit)
+#   tier     lowest install tier that needs the row (notes, then dev)
+#   os       linux | darwin | any
+#   arch     x86_64 | aarch64 | any
+#   kind     tar       archive unpacked into ~/.local/opt/<name>-<version>
+#            bin       single executable
+#            gz        gzip-compressed single executable
+#            font      font archive; the files= pattern goes to ~/.local/share/fonts
+#            spell     Vim spell file for stdpath('data')/site/spell
+#            ts-parser grammar source tarball, built with tree-sitter build
+#            git       repository checked out at the pinned commit
+#   url      https download (git rows: the repository)
+#   sha256   sha256 of the downloaded file (git rows: -)
+#   verify   how the sha256 was established (re-checked by scripts/lock-refresh.sh):
+#            digest    GitHub release asset digest; the vendor publishes no checksum
+#            checksum  digest, and it matches the vendor's checksum file
+#            attest    digest, and an attestation verified: gh attestation verify
+#                      (build provenance) or gh release verify-asset (immutable release)
+#            tofu      no upstream checksum; hash pinned at first download
+#                      (spell: two mirrors agreed; ts-parser: GitHub archive tarball)
+#            git       pinned commit, checked out by sha
+#   extra    kind-specific settings, key=value separated by ";":
+#            bin=<path in archive>   executable to link into ~/.local/bin (same name)
+#            icu=wrap                start through a wrapper when libicu is missing
+#            glibc=<x.y>             skip the row when glibc is older
+#            needs=<cmd>             skip the row when the command is missing
+#            files=<glob>            files to unpack (font rows)
+#            location=<dir>          grammar subdirectory (ts-parser rows)
+#
+# Linux only: nvim, rg, fd, fzf, marksman, yq, gitleaks, tree-sitter and the font
+# (the Mac gets these from the Brewfile). Every os=any row is used on both machines.
+# ts-parser rows come from lua/nvim-treesitter/parsers.lua at the nvim-treesitter
+# revision in nvim/nvim-pack-lock.json; grammars that need "tree-sitter generate"
+# are refused.
+#
+# name version tier os arch kind url sha256 verify extra
+nvim v0.12.5 notes linux x86_64 tar https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-linux-x86_64.tar.gz bce0f56eda1f1b1db6eee8f4133d7a38813ea07933837dd1777411ca384c6875 digest bin=nvim-linux-x86_64/bin/nvim
+nvim v0.12.5 notes linux aarch64 tar https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-linux-arm64.tar.gz 1aa5ca085249580ae0f91eb14f27ec0919773ff2d99a163d03f3d6c21ac29725 digest bin=nvim-linux-arm64/bin/nvim
+ripgrep 15.2.0 notes linux x86_64 tar https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz 33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c checksum bin=ripgrep-15.2.0-x86_64-unknown-linux-musl/rg
+ripgrep 15.2.0 notes linux aarch64 tar https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-unknown-linux-musl.tar.gz 800b1e7206afe799dfb5a6901f23147cfaabe0e52210538100f61e86e1740915 checksum bin=ripgrep-15.2.0-aarch64-unknown-linux-musl/rg
+fd v10.5.0 notes linux x86_64 tar https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-unknown-linux-musl.tar.gz 761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7 attest bin=fd-v10.5.0-x86_64-unknown-linux-musl/fd
+fd v10.5.0 notes linux aarch64 tar https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-aarch64-unknown-linux-musl.tar.gz d76c4317f7d5dba69f8a2a15856c90c777e7f0dd4e85f0de8c76de6992c374d4 attest bin=fd-v10.5.0-aarch64-unknown-linux-musl/fd
+fzf v0.74.4 notes linux x86_64 tar https://github.com/junegunn/fzf/releases/download/v0.74.4/fzf-0.74.4-linux_amd64.tar.gz 05e6813a337cc722c3ed07e54a764b75cc5d671e2e60459db0ba696ee5fa7504 checksum bin=fzf
+fzf v0.74.4 notes linux aarch64 tar https://github.com/junegunn/fzf/releases/download/v0.74.4/fzf-0.74.4-linux_arm64.tar.gz 5d673b849f494f0d64ec471d8640b153ca8849e3846a31da17abdcfce8df6b46 checksum bin=fzf
+marksman 2026-02-08 notes linux x86_64 bin https://github.com/artempyanykh/marksman/releases/download/2026-02-08/marksman-linux-x64 be5098e8213219269c47fc0d916a66fa31ce0602ec967475c722260aabf26087 digest icu=wrap
+marksman 2026-02-08 notes linux aarch64 bin https://github.com/artempyanykh/marksman/releases/download/2026-02-08/marksman-linux-arm64 db8e124527f7f8048e3e6c91821b9c52ef173d92c01e47d221bf1337afd962fb digest icu=wrap
+yq v4.53.6 notes linux x86_64 bin https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64 c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385 attest -
+yq v4.53.6 notes linux aarch64 bin https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_arm64 88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09 attest -
+gitleaks v8.30.1 notes linux x86_64 tar https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb checksum bin=gitleaks
+gitleaks v8.30.1 notes linux aarch64 tar https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080 checksum bin=gitleaks
+tree-sitter v0.27.0 notes linux x86_64 gz https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.0/tree-sitter-linux-x64.gz 20a1f39ec1c45f2211492dcb8881c802b643b554bb196869a29ac3778277fa77 attest glibc=2.39;needs=cc
+tree-sitter v0.27.0 notes linux aarch64 gz https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.0/tree-sitter-linux-arm64.gz 3a35a2dd961ad842384e982c75daf792c01d1a67e442fc3914d4de37bd8a59cb attest glibc=2.39;needs=cc
+JetBrainsMonoNerdFont v3.5.1 notes linux any font https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.tar.xz 04d5e8f903693f9dd13e16f867e994834e681eb3c72c0d337a770dcda09010cf checksum files=JetBrainsMonoNerdFontMono-*.ttf
+de.utf-8.spl - notes any any spell https://ftp.nluug.nl/pub/vim/runtime/spell/de.utf-8.spl 73c7107ea339856cdbe921deb92a45939c4de6eb9c07261da1b9dd19f683a3d1 tofu -
+de.utf-8.sug - notes any any spell https://ftp.nluug.nl/pub/vim/runtime/spell/de.utf-8.sug 13d0ecf92863d89ef60cd4a8a5eb2a5a13a0e8f9ba8d1c6abe47aba85714a948 tofu -
+en.utf-8.sug - notes any any spell https://ftp.nluug.nl/pub/vim/runtime/spell/en.utf-8.sug 5b6e5e6165582d2fd7a1bfa41fbce8242c72476222c55d17c2aa2ba933c932ec tofu -
+tr.utf-8.spl - notes any any spell https://ftp.nluug.nl/pub/vim/runtime/spell/tr.utf-8.spl aa5a5c41b8bd9975ccad90cd61b8cb3007074f896cdf350f2bed0ecf9c433f94 tofu -
+yaml a1c4812a73ec5e089de8e441fdea3a921e8d5079 notes any any ts-parser https://github.com/tree-sitter-grammars/tree-sitter-yaml/archive/a1c4812a73ec5e089de8e441fdea3a921e8d5079.tar.gz 6548cd059983e8073dfa39f102641f71d045b37f3a05b7ebd799ad17df8471d1 tofu -
+json 254c42a6476413b776221e03982ac8ae159eeb72 notes any any ts-parser https://github.com/tree-sitter/tree-sitter-json/archive/254c42a6476413b776221e03982ac8ae159eeb72.tar.gz 5735ec109268bdc25eb67875b96bc891de1f405253a1d3f9528a504249b0f832 tofu -
+bash a06c2e4415e9bc0346c6b86d401879ffb44058f7 notes any any ts-parser https://github.com/tree-sitter/tree-sitter-bash/archive/a06c2e4415e9bc0346c6b86d401879ffb44058f7.tar.gz 879e8951ea2cc82455407e3eda0293319657ec53e83191e0fb5a67430d10d804 tofu -
+python 293fdc02038ee2bf0e2e206711b69c90ac0d413f notes any any ts-parser https://github.com/tree-sitter/tree-sitter-python/archive/293fdc02038ee2bf0e2e206711b69c90ac0d413f.tar.gz b74d8ba6730535354175436208fe1452fd464f235263959ca40b8bf32cb23dc6 tofu -
+go 2346a3ab1bb3857b48b29d779a1ef9799a248cd7 notes any any ts-parser https://github.com/tree-sitter/tree-sitter-go/archive/2346a3ab1bb3857b48b29d779a1ef9799a248cd7.tar.gz 94d08fc0f727a8dbe03203e2aaf1c5dc33a57e496b583049324eddc79769797b tofu -
+typescript 75b3874edb2dc714fb1fd77a32013d0f8699989f notes any any ts-parser https://github.com/tree-sitter/tree-sitter-typescript/archive/75b3874edb2dc714fb1fd77a32013d0f8699989f.tar.gz 96ce4d1b513767d414bcca408efd9b49879162cceecdbed79a88e8ad2184f385 tofu location=typescript
+http db8b4398de90b6d0b6c780aba96aaa2cd8e9202c notes any any ts-parser https://github.com/rest-nvim/tree-sitter-http/archive/db8b4398de90b6d0b6c780aba96aaa2cd8e9202c.tar.gz cdf71de70580a9f2e0b6394fb31646ef947c5bd9eee846b19d7fd4bbf774ca92 tofu -
+diff ada384ac7bfc1307f32de474620120add29998fb notes any any ts-parser https://github.com/tree-sitter-grammars/tree-sitter-diff/archive/ada384ac7bfc1307f32de474620120add29998fb.tar.gz e11ccb2f6a5bd966170ccba7d160d832e002e64006a101d7339137795158e73b tofu -
+tmux-resurrect cff343cf9e81983d3da0c8562b01616f12e8d548 notes any any git https://github.com/tmux-plugins/tmux-resurrect - git -
+tmux-continuum 0698e8f4b17d6454c71bf5212895ec055c578da0 notes any any git https://github.com/tmux-plugins/tmux-continuum - git -

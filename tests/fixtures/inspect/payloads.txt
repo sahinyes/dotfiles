@@ -1,0 +1,6 @@
+$(touch PWNED)
+`touch PWNED`
+;rm -rf PWNED; touch PWNED
+'"$(touch PWNED)"'
+| touch PWNED && touch PWNED
+%0Atouch PWNED%0A

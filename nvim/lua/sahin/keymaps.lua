@@ -39,7 +39,8 @@ map('n', '<leader>tw', toggle('wrap', 'wrap'), 'Toggle: line wrap')
 map('n', '<leader>ts', toggle('spell', 'spell'), 'Toggle: spell check')
 map('n', '<leader>tn', toggle('relativenumber', 'relativenumber'), 'Toggle: relative numbers')
 map('n', '<leader>tc', function()
-  vim.bo.autocomplete = not vim.bo.autocomplete
+  -- vim.bo reads nil until the buffer has its own value; vim.o is the effective one.
+  vim.bo.autocomplete = not vim.o.autocomplete
   vim.notify('autocomplete ' .. (vim.bo.autocomplete and 'on' or 'off'))
 end, 'Toggle: autocomplete (buffer)')
 map(
@@ -49,12 +50,15 @@ map(
   'Toggle: inlay hints'
 )
 
--- Plugins (vim.pack). <leader>u = update group.
-map('n', '<leader>uu', function() vim.pack.update() end, 'Plugins: review updates')
-map('n', '<leader>ud', '<Cmd>PackDiff<CR>', 'Plugins: diff code of pending updates')
-map(
-  'n',
-  '<leader>ul',
-  function() vim.pack.update(nil, { offline = true, target = 'lockfile' }) end,
-  'Plugins: realign to lockfile (offline)'
-)
+-- Plugins (vim.pack). <leader>u = update group. Not in nvu: its first
+-- vim.pack call would clone every lockfile plugin into the untrusted profile.
+if not vim.g.untrusted then
+  map('n', '<leader>uu', function() vim.pack.update() end, 'Plugins: review updates')
+  map('n', '<leader>ud', '<Cmd>PackDiff<CR>', 'Plugins: diff code of pending updates')
+  map(
+    'n',
+    '<leader>ul',
+    function() vim.pack.update(nil, { offline = true, target = 'lockfile' }) end,
+    'Plugins: realign to lockfile (offline)'
+  )
+end

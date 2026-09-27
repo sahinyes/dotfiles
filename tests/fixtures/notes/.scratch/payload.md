@@ -1,0 +1,2 @@
+- [ ] hidden scratch line: must never be listed
+- [!] hidden scratch line: must never be listed

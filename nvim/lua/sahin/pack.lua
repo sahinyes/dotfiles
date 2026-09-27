@@ -5,6 +5,7 @@
 -- (NVIM_BOOTSTRAP=1) or :PackSync.
 local util = require('sahin.util')
 local specs = require('sahin.plugins.specs')
+local packdiff = require('sahin.packdiff')
 
 local M = {}
 
@@ -88,5 +89,10 @@ vim.api.nvim_create_autocmd('PackChanged', {
 })
 
 vim.api.nvim_create_user_command('PackSync', M.sync, { desc = 'Install plugins at lockfile revisions' })
+vim.api.nvim_create_user_command(
+  'PackDiff',
+  function() packdiff.open() end,
+  { desc = 'Show the code diff of every update in the vim.pack confirm buffer' }
+)
 
 return M

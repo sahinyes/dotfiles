@@ -1,0 +1,5 @@
+# Checked against the vendored compose-spec.json: "bogus_key" must be reported.
+services:
+  web:
+    image: nginx
+    bogus_key: 1

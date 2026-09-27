@@ -1,0 +1,14 @@
+{
+  "name": "dotfiles-language-servers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node language servers for the Mac. install.sh runs: npm ci --ignore-scripts, then npm audit signatures.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "basedpyright": "1.40.1",
+    "bash-language-server": "5.8.1",
+    "typescript": "7.0.2",
+    "vscode-langservers-extracted": "4.10.0",
+    "yaml-language-server": "1.24.0"
+  }
+}
