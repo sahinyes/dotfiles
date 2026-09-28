@@ -279,6 +279,9 @@ off at every layer:
   cannot wrap OSC 52 to get it past tmux). Tested in
   `tests/terminal/tmux_spec.sh`.
 - **iTerm2**: "Applications in terminal may access clipboard" stays off.
+  The only iTerm2 file install.sh writes is the separate "Notes (dotfiles)"
+  Dynamic Profile (Ctrl+Option+N hotkey window). It inherits the Default
+  profile and runs `nn` from `shell/env.sh`; nothing else.
   `scripts/doctor.sh` warns when it is on, unless you pass `--osc52`.
 - **GNOME Terminal** (VTE) does not support OSC 52 at all.
 - **Neovim**: terminal OSC 52 detection is off (`vim.g.termfeatures`). The

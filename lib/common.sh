@@ -126,7 +126,9 @@ link() {
 }
 
 # write_file DEST MODE < content: write DEST only when the content differs;
-# a different file already there is moved to the backup first.
+# a different file already there is moved to the backup first. Feed it with
+# `write_file DEST MODE < <(producer)`, never `producer | write_file`: a
+# pipe runs it in a subshell, which loses the change count and BACKUP_DIR.
 write_file() {
   local dest=$1 mode=$2 tmp
   tmp=$(mktemp "${TMPDIR:-/tmp}/dotfiles.XXXXXX")

@@ -87,6 +87,7 @@ Then find the symptom below. Each table reads: what you see, why, what to do.
 | `ö` or `ä` waits a second before it acts | It may be the start of `öö`, `öä` ... Neovim waits `timeoutlen` (1000 ms). | Type the second key without a pause. Do not lower `timeoutlen` below 700. |
 | F10 or Alt+letter opens the GNOME Terminal menu | The profile script has not run. | `~/dotfiles/scripts/gnome-terminal.sh` (it backs up with `dconf dump` first). |
 | `<C-Space>` does nothing on the Mac | macOS uses Ctrl+Space to switch input sources. | Use `<C-x><C-o>`, or change the macOS shortcut. |
+| Ctrl+Option+N does not open the notes window | iTerm2 loads the "Notes (dotfiles)" profile from `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles-notes.json`, and iTerm2 must be running for the hotkey to work. | Start iTerm2. If it still does nothing, quit and reopen iTerm2 once. Check Settings > Profiles > Notes (dotfiles) > Keys > Hotkey. Run `install.sh` again if the file is missing. |
 | `<leader>e` does nothing in `nvu` | netrw is not loaded in the untrusted profile, so the map does not exist there. | Use `nvim` for browsing folders. |
 
 ## Treesitter

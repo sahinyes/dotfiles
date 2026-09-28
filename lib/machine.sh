@@ -32,7 +32,7 @@ local_lua_step() {
     report OK local.lua "exists, left unchanged (edit it by hand)"
     return 0
   fi
-  {
+  write_file "$file" 644 < <(
     printf -- '-- Machine-local settings, written once by install.sh on %s.\n' "$(date +%Y-%m-%d)"
     printf -- '-- Not tracked by git; install.sh never overwrites this file.\n'
     if [ -f "$REPO/nvim/lua/local.lua.example" ]; then
@@ -41,6 +41,6 @@ local_lua_step() {
     printf 'vim.g.work_laptop = %s\n' "$(lua_bool "$WORK")"
     printf 'vim.g.have_nerd_font = %s\n' "$(lua_bool "$NERD_FONT")"
     printf "vim.g.notes_dir = vim.fn.expand('~/notes')\n"
-  } | write_file "$file" 644
+  )
   report OK local.lua "written: work_laptop=$(lua_bool "$WORK") have_nerd_font=$(lua_bool "$NERD_FONT") notes_dir=~/notes"
 }

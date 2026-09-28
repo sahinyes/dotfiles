@@ -65,7 +65,7 @@ notes_step() {
     git -C "$NOTES_DIR" -c init.defaultBranch=main init -q
     changed "git init $(tilde "$NOTES_DIR")"
   fi
-  notes_hook | write_file "$NOTES_DIR/.git/hooks/pre-commit" 755
+  write_file "$NOTES_DIR/.git/hooks/pre-commit" 755 < <(notes_hook)
   # A global core.hooksPath (hook managers) would make git skip the hook above.
   # Absolute, so the hook also runs in a linked worktree (git worktree add).
   if [ "$(git -C "$NOTES_DIR" config --local core.hooksPath || true)" != "$NOTES_DIR/.git/hooks" ]; then
@@ -88,7 +88,7 @@ notes_step() {
     changed "added .scratch/ to $(tilde "$NOTES_DIR/.gitignore")"
   fi
   if [ ! -e "$NOTES_DIR/inbox.md" ]; then
-    notes_inbox | write_file "$NOTES_DIR/inbox.md" 644
+    write_file "$NOTES_DIR/inbox.md" 644 < <(notes_inbox)
   fi
   if ! have gitleaks; then
     report WARN notes "gitleaks is missing: the pre-commit hook blocks every notes commit until it is installed"

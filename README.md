@@ -172,13 +172,13 @@ to the backup first.
 | Font | `~/.local/share/fonts/JetBrainsMonoNerdFont-v3.5.1/` (Linux), Homebrew cask (Mac) |
 | Spell files | `~/.local/share/nvim/site/spell/` (German, English suggestions, Turkish) |
 | Treesitter parsers | `~/.local/share/nvim/site/parser/*.so`, when a compiler and the tree-sitter CLI can be used |
-| Terminal | Mac: `~/.terminfo` (tmux-256color with undercurl). Linux: GNOME Terminal profile via `dconf`/`gsettings` |
+| Terminal | Mac: `~/.terminfo` (tmux-256color with undercurl) and the iTerm2 "Notes (dotfiles)" hotkey profile in `~/Library/Application Support/iTerm2/DynamicProfiles/dotfiles-notes.json` (Ctrl+Option+N; your own iTerm2 settings are not touched). Linux: GNOME Terminal profile via `dconf`/`gsettings` |
 | tmux plugins | tmux-resurrect and tmux-continuum at pinned commits in `~/.tmux/plugins/`; `~/.local/share/tmux/resurrect` mode 0700 |
 | Work mark | `~/.config/dotfiles/work` (created with `--work`, removed with `--no-work`) |
 | `nvim/lua/local.lua` | written once if missing (gitignored); your edits are never overwritten |
 | Notes | `~/notes`: `git init`, gitleaks pre-commit hook, `core.hooksPath`, a local placeholder git identity if you have none, `.scratch/` in `.gitignore`, `inbox.md`, trust entry (marksman only) |
 | Plugins | `~/.local/share/nvim/site/pack/core/opt/`, synced to the lockfile only when something differs |
-| Node servers (Mac, dev tier) | `tools/npm/node_modules` (`npm ci --ignore-scripts`, `npm audit signatures`), five commands linked into `~/.local/bin` |
+| Node servers (Mac, dev tier) | `tools/npm/node_modules` (`npm ci --ignore-scripts`, `npm audit signatures`, `npm audit --audit-level=high`), five commands linked into `~/.local/bin` |
 | Shell rc (only with `--shell-rc`) | one line marked `# added by dotfiles install.sh`; a copy of the old rc file goes to the backup |
 | Download cache | `~/.cache/dotfiles/` (re-checked before every use) |
 
@@ -211,6 +211,7 @@ example, not output from a real machine.
 ```text
 n <file>                    short for nvim
 nn                          Neovim in ~/notes, straight into the note picker
+Ctrl+Option+N (Mac)         from any app: a floating iTerm2 window with the note picker
 <Space>nd / <Space>nc      today's daily note / capture a task into inbox.md
 <CR> on a task line         cycle  [ ] -> [!] -> [x] -> [ ]
 <Space>no / <Space>ni      open / important tasks from ~/notes and TODO.md -> quickfix

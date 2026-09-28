@@ -38,7 +38,7 @@ BIN_DIR="$HOME/.local/bin" OPT_DIR="$HOME/.local/opt" CONF_DIR="$HOME/.config/do
 # shellcheck disable=SC2034
 NOTES_DIR="$HOME/notes" NVIM="$T/no-nvim" SHELL_RC=1 ORIG_PATH=$PATH
 # shellcheck source=/dev/null
-for f in common fetch notes links apt_extract; do . "$REPO/lib/$f.sh"; done
+for f in common fetch notes links apt_extract terminal; do . "$REPO/lib/$f.sh"; done
 
 # --- notes: .gitignore without a final newline, absolute hooksPath --------
 mkdir -p "$NOTES_DIR"
@@ -118,6 +118,25 @@ check "apt: stale when a library download failed last time" apt_stale git "$root
 printf 'git_1%%3a2.39.5_amd64.deb\n' >"$root/.dotfiles-ok"
 : >"$root/.dotfiles-missing"
 check "apt: old-format marker gets refreshed once" apt_stale git "$root"
+
+# --- write_file: changes are counted in this shell ------------------------
+CHANGES=0
+write_file "$T/wf" 644 < <(printf 'a\n') >/dev/null
+check "write_file: a new file counts as a change" test "$CHANGES" -eq 1
+write_file "$T/wf" 644 < <(printf 'a\n') >/dev/null
+check "write_file: the same content is not a change" test "$CHANGES" -eq 1
+write_file "$T/wf" 644 < <(printf 'b\n') >/dev/null
+check "write_file: new content counts and keeps a backup" test "$CHANGES" -ge 2 -a -n "$BACKUP_DIR"
+
+# --- iTerm2 notes hotkey profile --------------------------------------------
+json_field() { python3 -c 'import json,sys; print(json.load(sys.stdin)["Profiles"][0].get(sys.argv[1], ""))' "$1"; }
+REPO=/home/u/dotfiles iterm_notes_json 97F12D2A-FDAA-40EF-9077-F3787AC90D6A >"$T/notes.json"
+check "iterm2: the profile is valid JSON" python3 -m json.tool "$T/notes.json"
+check "iterm2: hotkey is Ctrl+Option+N" test "$(json_field 'HotKey Modifier Flags' <"$T/notes.json") $(json_field 'HotKey Key Code' <"$T/notes.json")" = "786432 45"
+check "iterm2: inherits the Default profile" test "$(json_field 'Dynamic Profile Parent GUID' <"$T/notes.json")" = 97F12D2A-FDAA-40EF-9077-F3787AC90D6A
+check "iterm2: runs nn through env.sh" test "$(json_field Command <"$T/notes.json")" = "/bin/zsh -lc '. \"/home/u/dotfiles/shell/env.sh\" && nn'"
+REPO=/home/u/dotfiles iterm_notes_json '' >"$T/notes-noparent.json"
+check "iterm2: valid JSON without a parent profile" python3 -m json.tool "$T/notes-noparent.json"
 
 if [ "$TEST_FAILS" -gt 0 ]; then
   echo "unit-test: $TEST_FAILS failed"
