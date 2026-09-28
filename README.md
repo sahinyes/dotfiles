@@ -119,7 +119,7 @@ fonts, compiler, work mark) and the plan. It changes nothing.
 ```
 
 **7. Install.** `--shell-rc` adds one line to `~/.zshrc` or `~/.bashrc` so
-new shells put `~/.local/bin` first on PATH and get the `nvu`/`nvr0`
+new shells put `~/.local/bin` first on PATH and get the `n`, `nn`, `nvu`/`nvr0`
 aliases (`$ZDOTDIR/.zshrc` when you set `ZDOTDIR`). Leave it out if you
 want to add that line yourself
 (`source ~/dotfiles/shell/env.sh`).
@@ -209,6 +209,8 @@ example, not output from a real machine.
 ## Daily use
 
 ```text
+n <file>                    short for nvim
+nn                          Neovim in ~/notes, straight into the note picker
 <Space>nd / <Space>nc      today's daily note / capture a task into inbox.md
 <CR> on a task line         cycle  [ ] -> [!] -> [x] -> [ ]
 <Space>no / <Space>ni      open / important tasks from ~/notes and TODO.md -> quickfix
@@ -292,7 +294,7 @@ dotfiles/
 ├── Brewfile                Mac packages
 ├── Makefile                make help: tests, lint, lock-check, lock-refresh
 ├── signing_key.pub         public key that signs release tags
-├── shell/env.sh            PATH (~/.local/bin first), nvu and nvr0 aliases
+├── shell/env.sh            PATH (~/.local/bin first), n, nn, nvu and nvr0
 ├── nvim/                   Neovim config (~/.config/nvim and ~/.config/nvim-untrusted)
 │   ├── init.lua            load order; security first
 │   ├── nvim-pack-lock.json plugin revisions
