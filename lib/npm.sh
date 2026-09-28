@@ -1,9 +1,11 @@
 # shellcheck shell=bash
 # Node language servers (macOS, dev tier) from tools/npm: exact versions in
 # package.json, every package pinned with its integrity hash in
-# package-lock.json. "npm ci --ignore-scripts" runs no install scripts and
-# "npm audit signatures" checks the registry signatures. Only the server
-# commands are linked into ~/.local/bin.
+# package-lock.json. "npm ci --ignore-scripts" runs no install scripts,
+# "npm audit signatures" checks the registry signatures and "npm audit
+# --audit-level=high" refuses known HIGH/CRITICAL vulnerabilities (bump
+# package.json, see docs/UPDATE.md). Only the server commands are linked
+# into ~/.local/bin.
 
 NPM_DIR="$REPO/tools/npm"
 NPM_BINS="yaml-language-server vscode-json-language-server bash-language-server basedpyright-langserver tsc"
@@ -31,8 +33,13 @@ npm_step() {
       report FAIL npm "npm audit signatures failed; node_modules removed"
       return 0
     fi
+    if ! (cd "$NPM_DIR" && npm audit --audit-level=high); then
+      rm -rf "$NPM_DIR/node_modules"
+      report FAIL npm "npm audit found HIGH/CRITICAL vulnerabilities; node_modules removed (update tools/npm)"
+      return 0
+    fi
     printf '%s\n' "$want" >"$stamp"
-    changed "npm ci in tools/npm (signatures verified)"
+    changed "npm ci in tools/npm (signatures verified, no high vulnerabilities)"
   fi
   for b in $NPM_BINS; do
     if [ -e "$NPM_DIR/node_modules/.bin/$b" ]; then
