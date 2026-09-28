@@ -134,6 +134,13 @@ end
 
 --- <leader>nn: find a note file.
 function M.find_notes()
+  -- Started from `nvim -c` (nn, the iTerm2 hotkey): wait until startup is
+  -- done, otherwise Neovim puts the cursor back in the first window and
+  -- keys go there instead of the picker's prompt.
+  if vim.v.vim_did_enter == 0 then
+    vim.api.nvim_create_autocmd('VimEnter', { once = true, callback = function() vim.schedule(M.find_notes) end })
+    return
+  end
   local builtin = telescope()
   local dir = notes_dir()
   if builtin and dir then builtin.find_files({ prompt_title = 'Notes', cwd = dir }) end

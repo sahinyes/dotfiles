@@ -24,9 +24,10 @@ test-lua: ## Neovim suites, headless, with the full config
 test-py: ## Note migration tests
 	python3 -B -m unittest tests/test_migrate.py
 
-test-terminal: ## tmux.conf on an isolated server, doctor.sh
+test-terminal: ## tmux.conf on an isolated server, doctor.sh, nn in a real terminal
 	bash tests/terminal/tmux_spec.sh
 	bash tests/terminal/doctor_spec.sh
+	bash tests/terminal/nn_spec.sh
 
 test-unit: ## install.sh helpers in a throwaway HOME (no network)
 	tests/install/unit-test.sh
