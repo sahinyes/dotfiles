@@ -6,7 +6,15 @@ if not telescope then return {} end
 -- check_mime_type off: for files without a known filetype the previewer would
 -- run io.popen('file --mime-type -b "<path>"'), a shell string, so a cloned
 -- file named like $(cmd) would run cmd. Such files are shown as plain text.
-telescope.setup({ defaults = { preview = { check_mime_type = false } } })
+-- One <Esc> closes a picker. By default the first <Esc> only enters the
+-- picker's normal mode, and a window command typed there (<C-w>o) acts on
+-- the floating picker (E5601). Move with the arrow keys or <C-n>/<C-p>.
+telescope.setup({
+  defaults = {
+    preview = { check_mime_type = false },
+    mappings = { i = { ['<Esc>'] = require('telescope.actions').close } },
+  },
+})
 
 local builtin = require('telescope.builtin')
 local map = util.map

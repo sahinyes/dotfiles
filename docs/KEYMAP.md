@@ -144,6 +144,11 @@ the selection (exact characters with `v`, whole lines with `V` and
 
 ### Search (`lua/sahin/plugins/telescope.lua`)
 
+Inside a picker: type to filter, `↑`/`↓` or `<C-n>`/`<C-p>` to move, `<CR>`
+to open, `<C-v>`/`<C-x>` to open in a vertical/horizontal split, `<Esc>` to
+close (one press: this config maps it to close instead of the picker's
+normal mode).
+
 | Mode | Keys | Description |
 |---|---|---|
 | n | `<leader>sh` | Search: help |
