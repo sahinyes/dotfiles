@@ -522,6 +522,30 @@ T.it('telescope maps (kickstart names)', function()
   T.ok(vim.fn.maparg('<leader>sw', 'x') ~= '', '<leader>sw also in visual mode')
 end)
 
+T.it('telescope preview never passes a file name to the shell', function()
+  local conf = require('telescope.config').values
+  T.eq(conf.preview.check_mime_type, false, 'preview.check_mime_type is off')
+  -- With the check on, a file without a known filetype is previewed after
+  -- io.popen('file --mime-type -b "<path>"'), and sh runs $(...) in the name.
+  local dir = tmp .. '/mime'
+  vim.fn.mkdir(dir, 'p')
+  local name = 'notes$(touch PWNED)'
+  local f = assert(io.open(dir .. '/' .. name, 'w'))
+  f:write('hello\n')
+  f:close()
+  local old_cwd = vim.fn.getcwd()
+  vim.cmd.cd(vim.fn.fnameescape(dir)) -- where a PWNED file would land
+  local buf = vim.api.nvim_create_buf(false, true)
+  local done = false
+  local opts = { preview = vim.deepcopy(conf.preview), callback = function() done = true end }
+  require('telescope.previewers').buffer_previewer_maker(dir .. '/' .. name, buf, opts)
+  vim.wait(5000, function() return done end, 20)
+  vim.cmd.cd(vim.fn.fnameescape(old_cwd))
+  T.eq(vim.api.nvim_buf_get_lines(buf, 0, 1, false), { 'hello' }, 'the file was previewed')
+  vim.api.nvim_buf_delete(buf, { force = true })
+  T.eq(vim.fn.readdir(dir), { name }, 'no PWNED file: the name never reached a shell')
+end)
+
 T.it('mini.clue config', function()
   T.eq(_G.MiniClue.config.window.delay, 300, 'clue window delay')
   T.eq(vim.o.timeoutlen, 1000, 'timeoutlen stays 1000')

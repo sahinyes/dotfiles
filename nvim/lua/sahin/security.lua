@@ -32,6 +32,20 @@ vim.o.modeline = false
 vim.o.modelineexpr = false
 vim.o.exrc = false
 
+-- K runs 'keywordprg' in the current directory. The runtime ftplugins for
+-- python, pyrex and bzl set it to "python3 -m pydoc", and pydoc imports
+-- <word>.py from there: K on `import utils` in a cloned repo would run the
+-- repo's utils.py. Emptied, K falls back to :Man, and an LSP with hover still
+-- takes over K (Neovim only maps it while 'keywordprg' is empty or a runtime
+-- default). This autocmd runs after the ftplugin: Neovim creates the ftplugin
+-- autocmd before it reads init.lua.
+vim.api.nvim_create_autocmd('FileType', {
+  group = vim.api.nvim_create_augroup('sahin.security', { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].keywordprg:find('pydoc', 1, true) then vim.bo[ev.buf].keywordprg = '' end
+  end,
+})
+
 -- OSC 52 is opt-in only (vim.g.osc52, applied by clipboard.lua). Otherwise
 -- Neovim asks the terminal at startup and, when no clipboard tool exists (SSH),
 -- silently uses OSC 52 for the + register.

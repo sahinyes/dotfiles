@@ -399,5 +399,102 @@ T.it('(g) OSC 52 clipboard is opt-in', function()
   T.eq({ r.provider, r.option }, { 'osc52', '' }, '(g) SSH with vim.g.osc52 = true: OSC 52 provider')
 end)
 
+-- (h) ---------------------------------------------------------------------
+--- In-process LSP server that only answers initialize (with hover) and shutdown.
+local function hover_server(dispatchers)
+  local closing = false
+  local function reply(callback, result)
+    vim.schedule(function() callback(nil, result) end)
+  end
+  return {
+    request = function(method, _, callback)
+      if method == 'initialize' then reply(callback, { capabilities = { hoverProvider = true } }) end
+      if method == 'shutdown' then reply(callback, vim.NIL) end
+      return true, 1
+    end,
+    notify = function(method)
+      if method == 'exit' then dispatchers.on_exit(0, 15) end
+      return true
+    end,
+    is_closing = function() return closing end,
+    terminate = function() closing = true end,
+  }
+end
+
+T.it('(h) K never runs pydoc (it imports modules from the cwd)', function()
+  -- The hostile clone ships utils.py; app.py says `import utils`.
+  for _, app in ipairs({ appname, 'nvim-untrusted' }) do
+    local markers = tmp .. '/markers-h-' .. app
+    vim.fn.mkdir(markers, 'p')
+    local r, res = child({
+      name = 'h-' .. app,
+      appname = app,
+      cwd = T.fixtures .. '/hostile_cwd',
+      env = { HOSTILE_MARKER_DIR = markers },
+      probe = [[
+        local out = { kp = {} }
+        for _, ft in ipairs({ 'python', 'pyrex', 'bzl' }) do -- all three use the python ftplugin
+          vim.cmd('enew')
+          vim.bo.filetype = ft
+          out.kp[ft] = vim.bo.keywordprg
+        end
+        vim.cmd('edit app.py')
+        vim.fn.search('^import utils')
+        vim.cmd('normal! w')
+        out.word = vim.fn.expand('<cword>')
+        pcall(vim.cmd.normal, 'K')
+        -- An external K program runs in a terminal buffer: let it finish.
+        for _, b in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.bo[b].buftype == 'terminal' then vim.fn.jobwait({ vim.bo[b].channel }, 10000) end
+        end
+        return out
+      ]],
+    })
+    started(r, res, '(h) ' .. app)
+    T.eq(r.word, 'utils', '(h) ' .. app .. ': cursor on the imported name')
+    for ft, kp in pairs(r.kp or {}) do
+      T.ok(not kp:find('pydoc', 1, true), '(h) ' .. app .. ': ' .. ft .. " 'keywordprg' is not pydoc", kp)
+    end
+    T.eq(vim.fn.readdir(markers), {}, '(h) ' .. app .. ': K did not import the planted utils.py')
+  end
+
+  -- An LSP with hover still gets K: 0.12 maps it only while 'keywordprg' is
+  -- empty or a runtime default, which is why it is emptied, not set to :help.
+  vim.cmd.edit(vim.fn.fnameescape(tmp .. '/hover.py'))
+  local buf = vim.api.nvim_get_current_buf()
+  T.eq(vim.bo[buf].keywordprg, '', "(h) python buffer: 'keywordprg' is empty")
+  local id = vim.lsp.start({ name = 'hover-stub', cmd = hover_server, root_dir = tmp }, { bufnr = buf })
+  local mapped = vim.wait(
+    5000,
+    function() return vim.fn.maparg('K', 'n', false, true).desc == 'vim.lsp.buf.hover()' end
+  )
+  T.ok(mapped, '(h) with an LSP attached, K is hover', vim.inspect(vim.fn.maparg('K', 'n', false, true)))
+  if id then vim.lsp.get_client_by_id(id):stop(true) end
+  vim.cmd('bwipeout!')
+end)
+
+-- (i) ---------------------------------------------------------------------
+T.it('(i) :Json accepts only RFC 8259 JSON and refuses huge results', function()
+  local inspect = require('sahin.inspect')
+  -- lua-cjson (vim.json.decode) accepts all of these; strict parsers do not.
+  local bad = { '[NaN]', '[-Infinity]', '[inf]', '[0x10]', '[-0x1p3]', '[+1]', '[01]', '[-01]', '[1.]', '[1.e5]' }
+  vim.list_extend(bad, { '[-.5]', '["a\tb"]', '["a\nb"]', '[1]\0' })
+  for _, text in ipairs(bad) do
+    local out, err = inspect.json(text, '  ')
+    T.ok(out == nil and (err or ''):find('^not valid JSON'), '(i) refused: ' .. vim.inspect(text), out)
+  end
+  local good = { '[0]', '[-0]', '[-0.0e-0]', '[1E+5]', '[1.5e-3]', '[123456789012345678901234567890]' }
+  vim.list_extend(good, { '["\\u0000\\t"]', '{"a":[true,false,null]}' })
+  for _, text in ipairs(good) do
+    T.eq(inspect.json(text, ''), text, '(i) accepted: ' .. text)
+  end
+  -- Nesting close to cjson's limit (1000) puts ~1800 spaces before every
+  -- element: 60 kB of input would become 54 MB.
+  local deep = ('['):rep(900) .. ('1,'):rep(30000) .. '1' .. (']'):rep(900)
+  local out, err = inspect.json(deep, '  ')
+  T.ok(out == nil and (err or ''):find('50 MB', 1, true), '(i) a result over 50 MB is refused', out and #out)
+  T.ok(inspect.json(deep, '') ~= nil, '(i) minifying the same input still works')
+end)
+
 vim.fs.rm(tmp, { recursive = true, force = true })
 T.finish('security_spec')

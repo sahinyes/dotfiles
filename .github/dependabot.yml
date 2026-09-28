@@ -1,0 +1,17 @@
+# Dependabot keeps the SHA-pinned actions in .github/workflows current. Once a
+# month it opens a pull request that changes the pinned SHA and its version
+# comment together; CI runs on that pull request. Read the diff and the
+# action's release notes before merging.
+#
+# Only the actions are covered: tools.lock, the plugin lockfile and the npm
+# lockfile are refreshed by hand (see the Makefile and docs/UPDATE.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # Propose a release only after it has been public for a week (the default
+    # is 3 days), so a broken or hijacked release has time to be pulled first.
+    cooldown:
+      default-days: 7

@@ -61,4 +61,7 @@ tmux_step() {
   lock_rows git git_row
   ensure_dir "$HOME/.local/share/tmux/resurrect" 700
   report OK tmux "resurrect dir $(tilde "$HOME/.local/share/tmux/resurrect") mode 0700"
+  if [ ! -f "$CONF_DIR/ssh-hosts" ]; then
+    report SKIP tmux "no $(tilde "$CONF_DIR/ssh-hosts"): ssh panes show the host name; the file format is in tmux/scripts/ssh-colors.sh"
+  fi
 }

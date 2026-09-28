@@ -84,15 +84,49 @@ g -C "$T/origin" -c user.signingkey="$T/other" tag -s -m v1.0.2 v1.0.2
 expect_fail "update refuses a tag signed by another key" "$C/install.sh" update v1.0.2 --dry-run
 expect_ok "HEAD still unchanged" test "$(git -C "$C" rev-parse HEAD)" = "$before"
 
-# A properly signed release: update fetches, verifies, checks out, re-runs.
+# A signed release previewed with --dry-run: verified, nothing checked out.
 printf 'change 2\n' >>"$T/origin/README-test"
 g -C "$T/origin" add -A
 g -C "$T/origin" commit -q -m release2
 g -C "$T/origin" -c user.signingkey="$T/key" tag -s -m v1.0.3 v1.0.3
-expect_ok "update accepts a signed tag" "$C/install.sh" update v1.0.3 --dry-run
-expect_ok "update re-ran install.sh from the new tag" grep -q 'dry run: nothing was changed' "$T/out"
-expect_ok "HEAD is at v1.0.3" test "$(git -C "$C" rev-parse HEAD)" = "$(git -C "$T/origin" rev-parse 'v1.0.3^{commit}')"
+expect_ok "update --dry-run accepts a signed tag" "$C/install.sh" update v1.0.3 --dry-run
+expect_ok "the dry run reports a good signature" grep -q 'v1.0.3 has a good signature' "$T/out"
+expect_ok "HEAD unchanged after the dry run" test "$(git -C "$C" rev-parse HEAD)" = "$before"
+expect_fail "the dry run stored no tag" git -C "$C" rev-parse -q --verify refs/tags/v1.0.3
+expect_fail "no candidate ref is left behind" git -C "$C" rev-parse -q --verify refs/dotfiles/candidate
 expect_fail "update rejects a malformed tag name" "$C/install.sh" update 'v1.0.3;id' --dry-run
+
+# Replay: a new tag name pointing at the old, validly signed v1.0.0 object.
+git -C "$T/origin" update-ref refs/tags/v1.0.4 "$(git -C "$T/origin" rev-parse v1.0.0)"
+expect_fail "update refuses an old signed tag under a new name" "$C/install.sh" update v1.0.4 --dry-run
+expect_ok "the refusal names the replay" grep -q 'is named v1.0.0' "$T/out"
+
+# OpenPGP: even a gpg that answers GOODSIG for anything must not vouch for a tag.
+mkdir "$T/fakebin"
+cat >"$T/fakebin/gpg" <<'EOF'
+#!/bin/sh
+printf '\n[GNUPG:] NEWSIG\n[GNUPG:] GOODSIG 0000000000000000 attacker\n'
+printf '[GNUPG:] VALIDSIG 00 2026-01-01 0 0 0 0 0 0 00\n[GNUPG:] TRUST_ULTIMATE 0 pgp\n'
+exit 0
+EOF
+chmod +x "$T/fakebin/gpg"
+pgp_tag=$(printf 'object %s\ntype commit\ntag v1.0.5\ntagger test <test> 1790000000 +0000\n\nv1.0.5\n-----BEGIN PGP SIGNATURE-----\n\nZmFrZQ==\n-----END PGP SIGNATURE-----\n' \
+  "$(git -C "$T/origin" rev-parse HEAD)" | git -C "$T/origin" mktag)
+git -C "$T/origin" update-ref refs/tags/v1.0.5 "$pgp_tag"
+expect_ok "setup: plain git verify-tag trusts the stub gpg" env PATH="$T/fakebin:$PATH" git -C "$T/origin" verify-tag v1.0.5
+expect_fail "update refuses an OpenPGP-signed tag" env PATH="$T/fakebin:$PATH" "$C/install.sh" update v1.0.5 --dry-run
+expect_ok "HEAD unchanged after the refusals" test "$(git -C "$C" rev-parse HEAD)" = "$before"
+
+# A real update checks out the tag and runs the NEW tag's install.sh (a stub
+# here, so nothing gets installed).
+printf '#!/bin/bash\necho "install.sh from v1.0.6 ran with: $*"\n' >"$T/origin/install.sh"
+g -C "$T/origin" add -A
+g -C "$T/origin" commit -q -m release3
+g -C "$T/origin" -c user.signingkey="$T/key" tag -s -m v1.0.6 v1.0.6
+expect_ok "update installs a signed tag" "$C/install.sh" update v1.0.6 --no-fonts
+expect_ok "it ran the new tag's install.sh with the flags" grep -q 'install.sh from v1.0.6 ran with: --no-fonts' "$T/out"
+expect_ok "HEAD is at v1.0.6" test "$(git -C "$C" rev-parse HEAD)" = "$(git -C "$T/origin" rev-parse 'v1.0.6^{commit}')"
+expect_ok "the verified tag is stored locally" git -C "$C" rev-parse -q --verify refs/tags/v1.0.6
 
 if [ "$FAILS" -gt 0 ]; then
   echo "release-test: $FAILS failed"

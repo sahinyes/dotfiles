@@ -1,18 +1,21 @@
 # shellcheck shell=bash
-# Downloads. One entry point, fetch URL OUT, which tries curl, then wget,
-# then python3's urllib, so a machine that has only one of them still works.
-# All three honour https_proxy. Only https URLs are accepted; integrity comes
-# from the sha256 check in lib/verify.sh, never from the transport alone.
-# (wget runs with --no-hsts so it leaves no ~/.wget-hsts behind.)
+# Downloads. One entry point, fetch URL OUT, which tries curl, then python3's
+# urllib, then wget, so a machine that has only one of them still works. All
+# three honour https_proxy. Only https URLs are requested, and curl and python3
+# also refuse redirects to anything but https. wget cannot restrict redirects,
+# so on a wget-only machine a redirect may travel over plain http. Integrity
+# never rests on the transport: every download is checked against its sha256
+# (lib/verify.sh) before use. (wget runs with --no-hsts so it leaves no
+# ~/.wget-hsts behind.)
 
 # fetch_tool: name of the downloader fetch will use (or "none").
 fetch_tool() {
   if have curl; then
     echo curl
-  elif have wget; then
-    echo wget
   elif have python3; then
     echo python3
+  elif have wget; then
+    echo wget
   else
     echo none
   fi
@@ -28,10 +31,19 @@ fetch_once() {
     wget) wget -q --no-hsts --timeout=30 --tries=1 -O "$2" "$1" ;;
     python3)
       python3 - "$1" "$2" <<'PY'
-import shutil, sys, urllib.request
+import shutil, sys, urllib.error, urllib.request
+
+
+class HttpsOnly(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not newurl.startswith("https://"):
+            raise urllib.error.URLError("refusing redirect to " + newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
 
 url, out = sys.argv[1], sys.argv[2]
-with urllib.request.urlopen(url, timeout=60) as r, open(out, "wb") as f:
+opener = urllib.request.build_opener(HttpsOnly)
+with opener.open(url, timeout=60) as r, open(out, "wb") as f:
     shutil.copyfileobj(r, f)
 PY
       ;;

@@ -60,14 +60,14 @@ if vim.env.NVIM_BOOTSTRAP == '1' then
 elseif #miss == 0 then
   local ok, err = pcall(vim.pack.add, specs, { confirm = false }) -- nothing to clone
   if not ok then util.warn('vim.pack: ' .. tostring(err)) end
-elseif offline then
+else
+  -- Something is missing: load what is on disk and say how to install the
+  -- rest. Cloning here could block startup (see the top of this file).
   for _, s in ipairs(specs) do
     if util.has_plugin(s.name) then pcall(vim.cmd.packadd, { s.name, bang = true }) end
   end
-  util.warn('plugins missing (' .. table.concat(miss, ' ') .. '): run install.sh or :PackSync')
-else
-  local ok, err = pcall(vim.pack.add, specs, { confirm = true }) -- shows what will be cloned
-  if not ok then util.warn('vim.pack: ' .. tostring(err)) end
+  local how = offline and 'run install.sh when online' or 'run :PackSync (or install.sh)'
+  util.warn('plugins missing (' .. table.concat(miss, ' ') .. '): ' .. how)
 end
 
 -- Audit trail for every install/update/delete (no build hooks run).

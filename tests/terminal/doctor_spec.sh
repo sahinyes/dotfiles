@@ -30,6 +30,14 @@ hasnt() {
         pass=$((pass + 1))
     fi
 }
+absent() { # absent NAME PATH
+    if [ -e "$2" ]; then
+        fail=$((fail + 1))
+        echo "  - FAIL: $1 ($2 exists)"
+    else
+        pass=$((pass + 1))
+    fi
+}
 
 # Common checks, with a controlled environment
 out="$(env -u TMUX TERM=xterm-256color PATH="$HOME/.local/bin:$PATH" /bin/bash "$doctor")"
@@ -42,6 +50,15 @@ has "missing ~/.local/bin warns" "$out" '^WARN  ~/.local/bin is not on PATH'
 has "every WARN has a fix" "$out" '^      fix: '
 out="$(env TMUX=/nonexistent/sock,1,0 TERM=tmux-256color /bin/bash "$doctor")"
 has "unreachable tmux server warns" "$out" '^WARN  cannot query the running tmux server'
+
+# doctor only reads. Even `nvim --version` would create
+# ~/.local/state/nvim/nvim.log, so run it with an empty HOME and look.
+if command -v nvim >/dev/null 2>&1; then
+    mkdir -p "$tmp/home"
+    env -u TMUX -u XDG_STATE_HOME -u NVIM_LOG_FILE -u NVIM_APPNAME HOME="$tmp/home" \
+        TERM=xterm-256color /bin/bash "$doctor" >/dev/null
+    absent "doctor wrote no nvim log" "$tmp/home/.local/state"
+fi
 
 if [ "$(uname -s)" = Darwin ]; then
     mkdir -p "$tmp/bin"
@@ -56,13 +73,16 @@ EOF
 
     plist_from '{"Default Bookmark Guid":"G1","New Bookmarks":[{"Guid":"G1","Name":"Main",
       "Option Key Sends":0,"Right Option Key Sends":0,"Unlimited Scrollback":true,
-      "Normal Font":"JetBrainsMonoNFM-Regular 13","Terminal Type":"xterm-256color"}]}' "$tmp/good.plist"
+      "Normal Font":"JetBrainsMonoNFM-Regular 13","Terminal Type":"xterm-256color",
+      "Keyboard Map":{"0xf702-0x300000":{"Action":10,"Text":"a"},"0xf702-0x2a0000":{"Action":10,"Text":"b"},
+        "0xd-0x320000":{"Action":12,"Text":"x"}}}]}' "$tmp/good.plist"
     out="$(run_fake "$tmp/good.plist")"
     hasnt "good prefs: no iTerm2 WARN" "$out" '^WARN  iTerm2'
     has "good prefs: Option keys" "$out" '^PASS  iTerm2: both Option keys = Normal'
     has "good prefs: CSI u off (default)" "$out" "^PASS  iTerm2: 'Report keys using CSI u' off"
     has "good prefs: key reporting on (default)" "$out" "^PASS  iTerm2: 'Apps can change how keys are reported' on"
     has "good prefs: clipboard off (default)" "$out" '^PASS  iTerm2: terminal apps cannot write the clipboard'
+    has "good prefs: Cmd/Shift+Option+arrow mappings do not matter" "$out" '^PASS  iTerm2: Option\+arrow reaches tmux as Alt\+arrow'
 
     plist_from '{"Default Bookmark Guid":"G2","AllowClipboardAccess":true,"New Bookmarks":[
       {"Guid":"G1","Name":"Other","Option Key Sends":0},
@@ -82,6 +102,20 @@ EOF
     has "bad: clipboard" "$out" '^WARN  iTerm2: terminal apps may write the clipboard'
     out="$(run_fake "$tmp/bad.plist" --osc52)"
     has "--osc52 accepts clipboard access" "$out" '^PASS  iTerm2: OSC 52 clipboard access on \(accepted: --osc52\)'
+
+    # A key mapping on Option+arrow wins over 'Treat Option as Alt', e.g. the
+    # "Natural Text Editing" preset (Esc+b / Esc+f): in the profile, or in
+    # the global GlobalKeyMap (newer iTerm2 adds a key code: -0x7c).
+    plist_from '{"Default Bookmark Guid":"G1","New Bookmarks":[{"Guid":"G1","Name":"Main",
+      "Keyboard Map":{"0xf702-0x280000":{"Action":10,"Text":"b"}}}]}' "$tmp/map-profile.plist"
+    out="$(run_fake "$tmp/map-profile.plist")"
+    has "profile Option+Left mapping warns" "$out" '^WARN  iTerm2: key mappings change what Option\+arrow sends \(0xf702-0x280000\)'
+    has "mapping fix names Key Mappings" "$out" '^      fix: remove the Option\+arrow entries in Settings > Profiles > Main > Keys > Key Mappings'
+    hasnt "profile mapping: no Option+arrow PASS" "$out" '^PASS  iTerm2: Option\+arrow'
+    plist_from '{"Default Bookmark Guid":"G1","GlobalKeyMap":{"0xf703-0x280000-0x7c":{"Action":10,"Text":"f"}},
+      "New Bookmarks":[{"Guid":"G1","Name":"Main"}]}' "$tmp/map-global.plist"
+    out="$(run_fake "$tmp/map-global.plist")"
+    has "global Option+Right mapping warns" "$out" '^WARN  iTerm2: key mappings change what Option\+arrow sends \(0xf703-0x280000\)'
 
     plist_from '{"Default Bookmark Guid":"G9","New Bookmarks":[{"Guid":"G1"}]}' "$tmp/dyn.plist"
     out="$(run_fake "$tmp/dyn.plist")"

@@ -1,0 +1,196 @@
+# CI for this repo. No job needs a secret: they run the repo's own scripts
+# and the downloads pinned in tools.lock.
+#
+# Every "uses:" is pinned to a full commit SHA; the tag in the comment is only
+# for people. Dependabot (.github/dependabot.yml) proposes new pins as pull
+# requests; read the diff and the upstream release notes before merging.
+#
+# Each job runs a make target or a script from this repo, so any job can be
+# repeated locally with the same command (see the Makefile).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash # bash -eo pipefail: a failing command in a pipe fails the step
+
+jobs:
+  lint:
+    # macOS on purpose: its /bin/bash is 3.2, the oldest bash install.sh and
+    # the scripts must parse with (make lint runs /bin/bash -n on each file).
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the linters
+        run: brew install stylua shellcheck shfmt ruff gitleaks
+      - name: Check that /bin/bash is 3.2
+        run: |
+          v=$(/bin/bash -c 'echo "$BASH_VERSION"')
+          echo "/bin/bash $v"
+          case $v in 3.2.*) ;; *) exit 1 ;; esac
+      - name: make lint (stylua, shellcheck, shfmt, bash -n, ruff, gitleaks)
+        run: make lint
+      - name: zsh -n on ssh-colors.sh (it is sourced into zsh)
+        run: zsh -n tmux/scripts/ssh-colors.sh
+
+  test:
+    # install.sh as the normal runner user (it never uses sudo), then every
+    # suite against the installed config: ~/.config/nvim links to this checkout.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NVIM_APPNAME: nvim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install test-only packages (tmux, zsh)
+        # tmux and zsh are for the terminal specs. apt-get update also gives
+        # install.sh fresh package lists for apt_extract (wl-clipboard).
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tmux zsh
+      - name: Put ~/.local/bin first on PATH (what --shell-rc does)
+        run: echo "$HOME/.local/bin" >>"$GITHUB_PATH"
+      # The download cache only saves trips to flaky mirrors (the spell files'
+      # mirror times out now and then). It cannot change what gets installed:
+      # install.sh checks every cached file's sha256 against tools.lock and
+      # downloads it again on a mismatch. A new tools.lock starts a new cache.
+      - name: Restore the download cache
+        id: downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/dotfiles
+          key: downloads-${{ runner.os }}-${{ hashFiles('tools.lock') }}
+      - name: install.sh --tier notes
+        run: ./install.sh --dev --tier notes --no-fonts --no-terminal
+      - name: Save the download cache
+        if: steps.downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/dotfiles
+          key: ${{ steps.downloads.outputs.cache-primary-key }}
+      - name: make test (Lua suites, Python tests, terminal specs)
+        # -k: run every suite even when an earlier one fails.
+        run: make -k test
+
+  terminal-macos:
+    # The Mac side of the terminal specs: BSD script(1), pbcopy, and
+    # doctor.sh's iTerm2 checks (against fake preferences, never real ones).
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install tmux
+        run: brew install tmux
+      - name: Terminal specs (tmux.conf, doctor.sh)
+        run: make test-terminal
+
+  release-flow:
+    # trust-key, the signed-checkout gate and "install.sh update", with a
+    # throwaway repo and throwaway SSH keys (nothing is installed).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: tests/install/release-test.sh
+        run: tests/install/release-test.sh
+
+  install-docker:
+    # install.sh twice in fresh Debian containers, non-root and without sudo:
+    # debian:12, debian:13, debian:13 without a C compiler, and debian:13 with
+    # wget only (git through apt_extract). Slow, so not on pull requests.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: tests/install/run.sh (deb12 deb13 deb13-nocc deb13-bare)
+        run: |
+          mkdir -p "$RUNNER_TEMP/install-logs"
+          LOG_DIR="$RUNNER_TEMP/install-logs" tests/install/run.sh
+      - name: Show the container logs
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP"/install-logs/*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$(basename "$f")"
+            cat "$f"
+            echo "::endgroup::"
+          done
+
+  lock-verify:
+    # Every Linux and any-OS download in tools.lock still matches its sha256,
+    # so a re-uploaded release asset or a changed archive tarball shows up
+    # here before it breaks an install. git rows (tmux plugins) are skipped:
+    # install.sh checks those out by commit.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download each asset and check it with sha256sum -c
+        run: |
+          # tools.lock columns: name version tier os arch kind url sha256 verify extra
+          bad=$(awk '!/^#/ && NF > 0 && NF != 10' tools.lock)
+          if [ -n "$bad" ]; then
+            printf 'tools.lock rows without exactly 10 columns:\n%s\n' "$bad"
+            exit 1
+          fi
+          file="$RUNNER_TEMP/asset"
+          total=0 failed=0
+          while read -r name os arch url sha <&3; do
+            total=$((total + 1))
+            # The spell files' mirror sometimes times out or resets HTTP/2
+            # streams (curl exit 28, 92). Plain --retry covers only timeouts
+            # and some HTTP codes; --retry-all-errors covers the resets too.
+            if ! curl -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 15 \
+              --max-time 900 --retry 5 --retry-delay 10 --retry-all-errors -o "$file" "$url"; then
+              echo "FAIL $name ($os/$arch): download failed: $url"
+              failed=$((failed + 1))
+            elif printf '%s  %s\n' "$sha" "$file" | sha256sum -c --status; then
+              echo "OK   $name ($os/$arch)"
+            else
+              echo "FAIL $name ($os/$arch): got $(sha256sum "$file" | cut -d ' ' -f 1), tools.lock has $sha: $url"
+              failed=$((failed + 1))
+            fi
+            rm -f "$file"
+          done 3< <(awk '!/^#/ && NF == 10 && ($4 == "linux" || $4 == "any") && $6 != "git" { print $1, $4, $5, $7, $8 }' tools.lock)
+          echo "$((total - failed)) of $total assets match tools.lock"
+          [ "$total" -gt 0 ] && [ "$failed" -eq 0 ]
+
+  gnome-terminal:
+    # scripts/gnome-terminal.sh against real gsettings/dconf in a private
+    # D-Bus session, plus the tmux and doctor specs, as a non-root user in
+    # debian:13 (the work laptop's GNOME Terminal side).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: tests/terminal/linux-docker.sh debian:13
+        run: bash tests/terminal/linux-docker.sh debian:13

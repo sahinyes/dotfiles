@@ -22,8 +22,10 @@ local TODO_HEADER = {
 }
 
 --- Create `path` with `lines` (mkdir -p first) unless it exists. True if created.
+--- lstat, not stat: a dangling symlink (e.g. a TODO.md committed to a cloned
+--- repo) counts as existing, so the template is never written through it.
 local function ensure(path, lines)
-  if vim.uv.fs_stat(path) then return false end
+  if vim.uv.fs_lstat(path) then return false end
   vim.fn.mkdir(vim.fs.dirname(path), 'p')
   vim.fn.writefile(lines, path)
   return true

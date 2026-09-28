@@ -61,12 +61,46 @@ local function json_tokens(s)
   end
 end
 
+--- True for an RFC 8259 number, true, false or null.
+local function json_literal(tok)
+  if tok == 'true' or tok == 'false' or tok == 'null' then return true end
+  local int, rest = tok:match('^%-?(%d+)(.*)$')
+  if not int or int:match('^0%d') then return false end -- no leading zeros
+  rest = rest:gsub('^%.%d+', '') -- fraction
+  rest = rest:gsub('^[eE][+-]?%d+', '') -- exponent
+  return rest == ''
+end
+
+--- What vim.json.decode (lua-cjson) lets through but RFC 8259 does not:
+--- NaN, Infinity, 0x10, +1, 01, 1. and raw control characters in strings.
+--- @return string? err
+local function json_strict_error(toks)
+  for _, t in ipairs(toks) do
+    if t:sub(1, 1) == '"' then
+      if t:find('[%z\1-\31]') then return 'raw control character (tab, newline, ...) in a string' end
+    elseif not t:find('^[{}%[%],:]$') and not json_literal(t) then
+      return 'not a JSON number or literal: ' .. vim.inspect(t:sub(1, 40))
+    end
+  end
+end
+
+-- Nesting close to cjson's limit (1000 levels) puts up to 1000 indents before
+-- every element, so a small payload could grow to gigabytes.
+local MAX_JSON_OUTPUT = 50 * 1024 * 1024
+
 local function json_indent(toks, indent)
-  local out, depth = {}, 0
-  local function newline() out[#out + 1] = '\n' .. indent:rep(depth) end
+  local out, depth, size = {}, 0, 0
+  local function add(s)
+    out[#out + 1] = s
+    size = size + #s
+  end
+  local function newline() add('\n' .. indent:rep(depth)) end
   for k, t in ipairs(toks) do
+    if size > MAX_JSON_OUTPUT then
+      return nil, ('result is larger than %d MB (deeply nested?): refused'):format(MAX_JSON_OUTPUT / 1024 / 1024)
+    end
     if t == '{' or t == '[' then
-      out[#out + 1] = t
+      add(t)
       if toks[k + 1] ~= '}' and toks[k + 1] ~= ']' then -- keep {} and [] on one line
         depth = depth + 1
         newline()
@@ -76,14 +110,14 @@ local function json_indent(toks, indent)
         depth = depth - 1
         newline()
       end
-      out[#out + 1] = t
+      add(t)
     elseif t == ',' then
-      out[#out + 1] = ','
+      add(',')
       newline()
     elseif t == ':' then
-      out[#out + 1] = ': '
+      add(': ')
     else
-      out[#out + 1] = t
+      add(t)
     end
   end
   return table.concat(out)
@@ -95,6 +129,8 @@ function M.json(text, indent)
   local ok, err = pcall(vim.json.decode, text)
   if not ok then return nil, 'not valid JSON: ' .. tostring(err) end
   local toks = json_tokens(text)
+  local strict_err = json_strict_error(toks)
+  if strict_err then return nil, 'not valid JSON: ' .. strict_err end
   if indent == '' then return table.concat(toks) end
   return json_indent(toks, indent)
 end

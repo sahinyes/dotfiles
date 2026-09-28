@@ -10,8 +10,9 @@
 #
 # Usage:
 #   ./install.sh [flags]                  install or repair
-#   ./install.sh trust-key SHA256:<fp>    pin the release signing key (once per machine)
+#   ./install.sh trust-key SHA256:<fp>    pin the signing key once you checked it (README, bootstrap)
 #   ./install.sh update vX.Y.Z [flags]    fetch, verify and install a signed release
+#                                         (with --dry-run: verify only, check nothing out)
 #
 # Flags:
 #   --dry-run         show what was detected and the plan; change nothing
@@ -47,7 +48,7 @@ WORK_MARKER="$CONF_DIR/work"
 . "$REPO/lib/fetch.sh"       # downloads: curl, wget or python3
 . "$REPO/lib/verify.sh"      # sha256 checks
 . "$REPO/lib/detect.sh"      # what this machine has
-. "$REPO/lib/release.sh"     # signed tags: trust-key, update, checkout check
+. "$REPO/lib/release.sh"     # signed tags: verify_tag, trust-key, update, the gate
 . "$REPO/lib/links.sh"       # symlinks into $HOME, --shell-rc
 . "$REPO/lib/brew.sh"        # macOS: Brewfile
 . "$REPO/lib/tools.sh"       # tools.lock rows

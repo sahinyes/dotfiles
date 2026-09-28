@@ -3,7 +3,9 @@
 local map = require('sahin.util').map
 
 map('n', '<Esc>', '<Cmd>nohlsearch<CR>', 'Clear search highlight')
-map('n', '<leader>e', '<Cmd>Explore<CR>', 'File explorer (netrw)')
+if not vim.g.untrusted then -- nvu disables netrw
+  map('n', '<leader>e', '<Cmd>Explore<CR>', 'File explorer (netrw)')
+end
 
 -- Quickfix / location list / diagnostics
 map('n', '<leader>xq', '<Cmd>botright copen<CR>', 'Quickfix: open')

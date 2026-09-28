@@ -14,7 +14,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
     --osc52) osc52=true && shift ;;
     -h | --help)
-        sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
         exit 0
         ;;
     *)
@@ -74,7 +74,8 @@ else
 fi
 
 if have nvim; then
-    nv="$(nvim --version 2>/dev/null | head -n 1 || true)"
+    # NVIM_LOG_FILE: even --version would create ~/.local/state/nvim/nvim.log
+    nv="$(NVIM_LOG_FILE=/dev/null nvim --version 2>/dev/null | head -n 1 || true)"
     np="$(tilde "$(command -v nvim)")"
     case "$nv" in
     "NVIM v0.12."*) pass "nvim ${nv#NVIM } at $np" ;;
@@ -213,11 +214,30 @@ if [ "$os" = Darwin ]; then
                     if is_true "$legacy"; then alt=false; else alt=true; fi
                 fi
             fi
-            if is_true "${alt:-true}"; then
-                pass "iTerm2: Option+arrow reaches tmux as Alt+arrow (pane switching)"
-            else
+            # A key mapping overrides that setting: the profile's Key Mappings
+            # or the global Key Bindings (GlobalKeyMap). E.g. the "Natural Text
+            # Editing" preset sends Esc+b / Esc+f, which tmux does not bind.
+            # A mapping is stored as 0xf702-0x280000: the arrows are
+            # 0xf700-0xf703, and the modifier bits must be Option (0x80000)
+            # without Shift (0x20000), Ctrl (0x40000) or Cmd (0x100000).
+            arrow_maps=""
+            for keymap in "$p.Keyboard Map" GlobalKeyMap; do
+                mapped="$(printf '%s' "$prefs" | plutil -extract "$keymap" json -o - - 2>/dev/null || true)"
+                for key in $(printf '%s\n' "$mapped" | grep -oE '0xf70[0-3]-0x[0-9a-fA-F]+' || true); do
+                    mods="${key#*-}"
+                    if [ $((mods & 0x1e0000)) -eq $((0x80000)) ]; then
+                        arrow_maps="$arrow_maps $key"
+                    fi
+                done
+            done
+            if ! is_true "${alt:-true}"; then
                 warn "iTerm2: Option+arrow is not sent as Alt+arrow (tmux Option+arrow pane switching fails)" \
                     "$where > Keys > General: check 'Treat Option as Alt for special keys like arrows'"
+            elif [ -n "$arrow_maps" ]; then
+                warn "iTerm2: key mappings change what Option+arrow sends (${arrow_maps# }), so tmux pane switching may fail" \
+                    "remove the Option+arrow entries in $where > Keys > Key Mappings and in Settings > Keys > Key Bindings"
+            else
+                pass "iTerm2: Option+arrow reaches tmux as Alt+arrow (pane switching)"
             fi
             unlimited="$(pget "$p.Unlimited Scrollback")"
             lines="$(pget "$p.Scrollback Lines")"

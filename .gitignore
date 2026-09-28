@@ -6,7 +6,6 @@ nvim/spell/local*
 .env*
 *.pem
 *.key
-kit/
 Brewfile.lock.json
 .DS_Store
 __pycache__/

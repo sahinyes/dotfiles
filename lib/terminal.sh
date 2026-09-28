@@ -54,6 +54,7 @@ terminal_step() {
     say "OSC 52 in iTerm2 (only if you accept that text printed in the terminal can"
     say "replace your clipboard): Settings > General > Selection >"
     say "  'Applications in terminal may access clipboard'. install.sh changes nothing here."
-    report WARN terminal "--osc52: enable clipboard access in iTerm2 by hand (see above); off by default on purpose"
+    say "Neovim over SSH also needs: vim.g.osc52 = true in ~/dotfiles/nvim/lua/local.lua"
+    report WARN terminal "--osc52: enable clipboard access in iTerm2 by hand and set vim.g.osc52 = true in local.lua (see above); off by default on purpose"
   fi
 }

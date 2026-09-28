@@ -36,6 +36,28 @@ apt_closure() {
   done
 }
 
+# apt_candidate PKG: the version apt would install now (empty if unknown).
+apt_candidate() {
+  apt-cache show --no-all-versions "$1" 2>/dev/null | sed -n 's/^Version: //p' | head -n 1
+}
+
+# apt_unpacked PKG ROOT: the version of PKG unpacked under ROOT (from
+# .dotfiles-ok, one "package version" line per unpacked .deb).
+apt_unpacked() {
+  awk -v p="$1" '$1 == p { print $2 }' "$2/.dotfiles-ok" 2>/dev/null
+}
+
+# apt_stale PKG ROOT: true when ROOT must be (re)unpacked: never unpacked,
+# older than apt's candidate (Debian security updates arrive this way), or a
+# library download failed last time.
+apt_stale() {
+  local want
+  [ -f "$2/.dotfiles-ok" ] || return 0
+  [ -s "$2/.dotfiles-missing" ] && return 0
+  want=$(apt_candidate "$1")
+  [ -n "$want" ] && [ "$(apt_unpacked "$1" "$2")" != "$want" ]
+}
+
 # apt_lib_path ROOT: colon list of the folders under ROOT that hold libraries.
 apt_lib_path() {
   find "$1" \( -type f -o -type l \) -name 'lib*.so*' 2>/dev/null |
@@ -67,14 +89,15 @@ apt_wrapper() {
 # apt_extract PKG BIN...: unpack PKG (+ missing libraries) and wrap each BIN
 # (a path relative to the package root, e.g. usr/bin/wl-copy).
 apt_extract() {
-  local pkg=$1 root tmp p libpath bin missing='' env_git='' vflag=--version
+  local pkg=$1 root tmp p libpath bin missing='' env_git='' vflag=--version old
   shift
   root="$OPT_DIR/apt/$pkg"
   if ! have apt-get || ! have dpkg-deb || ! have dpkg-query; then
     report FAIL apt "$pkg: apt-get/dpkg-deb not found, cannot unpack without root"
     return 0
   fi
-  if [ ! -f "$root/.dotfiles-ok" ]; then
+  if apt_stale "$pkg" "$root"; then
+    old=$(apt_unpacked "$pkg" "$root")
     tmp=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-apt.XXXXXX")
     for p in $(apt_closure "$pkg"); do
       if ! (cd "$tmp" && apt-get download "$p" >/dev/null 2>&1); then
@@ -88,11 +111,16 @@ apt_extract() {
     done
     rm -rf "$root.tmp"
     mkdir -p "$root.tmp"
-    for p in "$tmp"/*.deb; do dpkg-deb -x "$p" "$root.tmp"; done
-    (cd "$tmp" && ls ./*.deb) | sed 's|^\./||' >"$root.tmp/.dotfiles-ok"
+    for p in "$tmp"/*.deb; do
+      dpkg-deb -x "$p" "$root.tmp"
+      # shellcheck disable=SC2016 # dpkg's own ${Field} syntax, not shell
+      dpkg-deb -W --showformat='${Package} ${Version}\n' "$p" >>"$root.tmp/.dotfiles-ok"
+    done
+    # Failed library downloads are retried on the next run.
+    printf '%s' "$missing" >"$root.tmp/.dotfiles-missing"
     rm -rf "$tmp" "$root"
     mv "$root.tmp" "$root"
-    changed "unpacked $pkg (+ $(($(wc -l <"$root/.dotfiles-ok") - 1)) libraries) into $(tilde "$root")"
+    changed "unpacked $pkg $(apt_unpacked "$pkg" "$root")${old:+ (was $old)} (+ $(($(wc -l <"$root/.dotfiles-ok") - 1)) libraries) into $(tilde "$root")"
   fi
   libpath=$(apt_lib_path "$root")
   # git finds its helpers (git-remote-https) and templates through these.

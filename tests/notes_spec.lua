@@ -445,6 +445,71 @@ T.it(':Capture, :Daily and :Todo create files (mkdir -p)', function()
   cd(T.repo)
 end)
 
+T.it('a hostile TODO.md symlink: :Tasks skips it, :Todo never writes through it', function()
+  -- A cloned repo can commit TODO.md as a symlink (or unpack it as a FIFO).
+  local repo = tmp .. '/hostile-todo'
+  vim.fn.mkdir(repo .. '/.git', 'p')
+  vim.fn.mkdir(repo .. '/docs', 'p')
+  vim.fn.writefile({ '- [ ] linked task' }, repo .. '/docs/TODO.md')
+  vim.fn.writefile({ '- [ ] outside task' }, tmp .. '/outside.md')
+  local todo = repo .. '/TODO.md'
+  cd(repo)
+  vim.cmd('enew!')
+  -- sources() only stats the path, so the parent can call it safely.
+  local function listed(make)
+    vim.fn.delete(todo)
+    make()
+    local list = pickers.sources()
+    return list[#list] == todo
+  end
+  T.eq(listed(function() vim.uv.fs_symlink('/dev/zero', todo) end), false, 'TODO.md -> /dev/zero is skipped')
+  T.eq(listed(function() vim.uv.fs_symlink(tmp .. '/outside.md', todo) end), false, 'a link out of the repo is skipped')
+  T.eq(listed(function() vim.system({ 'mkfifo', todo }):wait() end), false, 'a FIFO is skipped')
+  T.eq(listed(function() vim.uv.fs_symlink('docs/TODO.md', todo) end), true, 'a link inside the repo is used')
+
+  -- :Tasks itself runs in a child: reading /dev/zero never ends, and the
+  -- child helper kills it after 30 s.
+  vim.fn.delete(todo)
+  vim.uv.fs_symlink('/dev/zero', todo)
+  local out, res = child({
+    ('vim.g.notes_dir = %q'):format(fixture_notes),
+    ('vim.cmd.cd(%q)'):format(repo),
+    "vim.cmd('Tasks open')",
+    "io.stdout:write('RESULT' .. vim.json.encode({ n = #vim.fn.getqflist() }))",
+    "vim.cmd('qa!')",
+  }, { NVIM_APPNAME = vim.env.NVIM_APPNAME })
+  T.eq(res.code, 0, ':Tasks with TODO.md -> /dev/zero returns (child exited 0)')
+  T.ok((out.n or 0) > 0, '... and still lists the notes tasks', vim.inspect(out))
+
+  -- Whatever else could stall rg: :Tasks waits at most 10 s and says so.
+  local system, limit = vim.system, nil
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.system = function()
+    return {
+      wait = function(_, ms)
+        limit = ms
+        return { code = 124, stdout = '', stderr = '' } -- what wait() returns after killing rg
+      end,
+    }
+  end
+  log = {}
+  local ok = pcall(function() vim.cmd('Tasks open') end)
+  vim.system = system
+  T.ok(ok, ':Tasks with a stalled rg did not error')
+  T.eq(limit, 10000, ':Tasks gives rg 10 s')
+  T.ok(logged('rg: stopped after 10 s', vim.log.levels.WARN), '... and warns when rg was stopped')
+
+  -- A dangling link: :Todo must not create its target.
+  vim.fn.delete(todo)
+  vim.uv.fs_symlink(tmp .. '/planted.md', todo)
+  vim.cmd('enew!')
+  vim.cmd('Todo')
+  T.eq(vim.uv.fs_stat(tmp .. '/planted.md'), nil, ':Todo did not write through a dangling TODO.md link')
+  T.eq(vim.api.nvim_buf_get_name(0), todo, ':Todo still opens TODO.md')
+  vim.cmd('enew!')
+  cd(T.repo)
+end)
+
 T.it('<leader>1..5 hot notes', function()
   for i = 1, 5 do
     local m = vim.fn.maparg('<leader>' .. i, 'n', false, true)

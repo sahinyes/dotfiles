@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SSH wrapper: changes tmux pane colors based on target host
+# SSH wrapper: labels and colors the tmux status bar and window tab by host
 # Source this file in .zshrc (or .bashrc):  . ~/.tmux/scripts/ssh-colors.sh
 # It is sourced into your interactive shell, so it sets no shell options.
 #
@@ -34,16 +34,17 @@ _ssh_colors_label() {
 }
 
 ssh() {
-    local host=""
-    # Extract hostname from ssh args (skip flags and their values)
-    local skip_next=false
+    local host="" arg skip_next=false
+    # ssh options that take a value (-p 2222, -l root, ...). They may come
+    # at the end of a cluster (-vp 2222, -Ap 2222); -p2222 or -lroot carry
+    # the value in the same argument.
+    local takes_value='^-[46AaCfGgKkMNnqsTtVvXxYy]*[BbcDEeFIiJLlmOoPpQRSWw]$'
+    # The host is the first argument that is not an option or its value.
     for arg in "$@"; do
         if $skip_next; then skip_next=false; continue; fi
         case "$arg" in
-            -*) # flags that take a value
-                case "$arg" in
-                    -[bcDEeFIiJLlmOopQRSWw]) skip_next=true ;;
-                esac
+            -*)
+                if [[ "$arg" =~ $takes_value ]]; then skip_next=true; fi
                 ;;
             *)
                 # First non-flag arg is [user@]host
@@ -53,8 +54,13 @@ ssh() {
         esac
     done
 
-    # Set tmux status bar + window name based on host
-    if [ -n "$TMUX" ] && [ -n "$host" ]; then
+    # Mark the pane that runs ssh, not the window you happen to look at
+    # ($TMUX_PANE, so every tmux command below needs -t). tmux.conf's
+    # status-left shows @ssh_label of the active pane; this pane's window
+    # tab gets the color and the label as its name.
+    local pane=""
+    if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] && [ -n "$host" ]; then
+        pane="$TMUX_PANE"
         local label color icon
         label="$(_ssh_colors_label "$host")"
         # The label ends up in a tmux format, where "#(...)" would run a
@@ -69,26 +75,26 @@ ssh() {
             *)    color="#B48EAD"; icon="" ;;
         esac
 
-        tmux set status-style "bg=#2E3440,fg=$color"
-        tmux set status-left "#[bg=$color,fg=#2E3440,bold] $icon $label #[bg=#2E3440,fg=$color]"
-        tmux setw automatic-rename off
-        tmux rename-window "$label"
-        # Color this window tab
-        tmux setw window-status-style "bg=$color,fg=#2E3440"
-        tmux setw window-status-current-style "bg=$color,fg=#2E3440,bold"
+        tmux set -p -t "$pane" @ssh_label "$icon $label" \; \
+            set -p -t "$pane" @ssh_color "$color" \; \
+            set -w -t "$pane" automatic-rename off \; \
+            set -w -t "$pane" window-status-style "bg=$color,fg=#2E3440" \; \
+            set -w -t "$pane" window-status-current-style "bg=$color,fg=#2E3440,bold" \; \
+            rename-window -t "$pane" "$label"
     fi
 
     # Run actual ssh
     command ssh "$@"
     local exit_code=$?
 
-    # Reset status bar + window style on disconnect
-    if [ -n "$TMUX" ]; then
-        tmux setw window-status-style 'bg=#3B4252,fg=#D8DEE9'
-        tmux setw window-status-current-style 'bg=#81A1C1,fg=#2E3440,bold'
-        tmux set status-style 'bg=#2E3440,fg=#D8DEE9'
-        tmux setw automatic-rename on
-        tmux source-file ~/.tmux.conf 2>/dev/null
+    # On disconnect remove exactly those settings from this pane and its
+    # window; tmux.conf's values show through again.
+    if [ -n "$pane" ]; then
+        tmux set -pu -t "$pane" @ssh_label \; \
+            set -pu -t "$pane" @ssh_color \; \
+            set -wu -t "$pane" automatic-rename \; \
+            set -wu -t "$pane" window-status-style \; \
+            set -wu -t "$pane" window-status-current-style
     fi
 
     return $exit_code

@@ -32,7 +32,7 @@ links_step() {
 shell_rc_step() {
   local rc src mark="# added by dotfiles install.sh"
   case ${SHELL##*/} in
-    zsh) rc="$HOME/.zshrc" ;;
+    zsh) rc="${ZDOTDIR:-$HOME}/.zshrc" ;;
     bash) rc="$HOME/.bashrc" ;;
     *) rc= ;;
   esac
@@ -52,6 +52,14 @@ shell_rc_step() {
     return 0
   fi
   src="$REPO/shell/env.sh"
+  # The path goes inside double quotes in the rc file: refuse characters that
+  # would run code there at every shell start.
+  case $src in
+    *[\"\$\`\\]*)
+      report WARN shell "the repo path contains shell metacharacters: add 'source $src' to $(tilde "$rc") yourself"
+      return 0
+      ;;
+  esac
   case $src in "$HOME"/*) src="\$HOME/${src#"$HOME"/}" ;; esac
   if [ -f "$rc" ]; then backup_copy "$rc"; fi
   printf '\n[ -r "%s" ] && source "%s" %s\n' "$src" "$src" "$mark" >>"$rc"

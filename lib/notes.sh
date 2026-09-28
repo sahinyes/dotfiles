@@ -67,8 +67,9 @@ notes_step() {
   fi
   notes_hook | write_file "$NOTES_DIR/.git/hooks/pre-commit" 755
   # A global core.hooksPath (hook managers) would make git skip the hook above.
-  if [ "$(git -C "$NOTES_DIR" config --local core.hooksPath || true)" != .git/hooks ]; then
-    git -C "$NOTES_DIR" config --local core.hooksPath .git/hooks
+  # Absolute, so the hook also runs in a linked worktree (git worktree add).
+  if [ "$(git -C "$NOTES_DIR" config --local core.hooksPath || true)" != "$NOTES_DIR/.git/hooks" ]; then
+    git -C "$NOTES_DIR" config --local core.hooksPath "$NOTES_DIR/.git/hooks"
     changed "pinned core.hooksPath for $(tilde "$NOTES_DIR")"
   fi
   # Auto-commit needs an identity; a fresh laptop may have none. Local only,
@@ -79,6 +80,10 @@ notes_step() {
     changed "set a local placeholder git identity for $(tilde "$NOTES_DIR")"
   fi
   if [ ! -f "$NOTES_DIR/.gitignore" ] || ! grep -qx '\.scratch/' "$NOTES_DIR/.gitignore"; then
+    # A last line without a newline would otherwise merge with .scratch/.
+    if [ -s "$NOTES_DIR/.gitignore" ] && [ -n "$(tail -c 1 "$NOTES_DIR/.gitignore")" ]; then
+      printf '\n' >>"$NOTES_DIR/.gitignore"
+    fi
     printf '.scratch/\n' >>"$NOTES_DIR/.gitignore"
     changed "added .scratch/ to $(tilde "$NOTES_DIR/.gitignore")"
   fi
@@ -102,4 +107,6 @@ notes_step() {
       ;;
     *) report FAIL notes "$(tilde "$NOTES_DIR") ready, but trust failed (exit $rc): ${out:-no output}" ;;
   esac
+  # The trust gate is silent, so say it once here.
+  report OFF trust "LSP and gitsigns stay off in other repos until you run :TrustProject there"
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tmux status bar helper — usage: status.sh <segment>
+# tmux status bar helper — usage: status.sh <segment> [pane id, for git]
 # Works on macOS and Linux (BSD and GNU tools, bash 3.2). A segment whose
 # tools are missing prints nothing, so the status bar never shows an error.
 set -euo pipefail
@@ -84,7 +84,12 @@ uptime)
     uptime | sed 's/.*up *//' | sed 's/,.*//' | xargs
     ;;
 git)
-    dir=$(tmux display-message -p -F '#{pane_current_path}' 2>/dev/null || true)
+    # $2 is the pane id from tmux.conf (#{pane_id}): each client shows the
+    # branch of its own active pane. Without it nothing is printed.
+    dir=""
+    if [ -n "${2:-}" ]; then
+        dir=$(tmux display-message -p -t "$2" -F '#{pane_current_path}' 2>/dev/null || true)
+    fi
     if [ -n "$dir" ] && cd "$dir" 2>/dev/null; then
         # The pane may sit in a cloned target repo: never let its .git/config
         # run an fsmonitor hook (branch --show-current does not read the

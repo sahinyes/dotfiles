@@ -10,14 +10,26 @@ M.patterns = { -- same regex for ripgrep and Vim
 
 local function notes() return require('sahin.notes') end
 
+--- The project's TODO.md, only if it is a regular file inside the repo. A
+--- cloned repo can ship it as a symlink to /dev/zero or /proc/...: reading
+--- that never ends and Neovim would hang.
+local function project_todo()
+  local root = vim.fs.root(0, '.git')
+  if not root then return nil end
+  local todo = vim.fs.joinpath(root, 'TODO.md')
+  local real, real_root = vim.uv.fs_realpath(todo), vim.uv.fs_realpath(root)
+  if not (real and real_root and vim.fs.relpath(real_root, real)) then return nil end -- missing or outside
+  local stat = vim.uv.fs_stat(real)
+  if stat and stat.type == 'file' then return todo end
+end
+
 --- Existing search roots: notes dir and the project's TODO.md.
 function M.sources()
   local dir = notes().dir()
   local list = {}
   if vim.fn.isdirectory(dir) == 1 then list[1] = dir end
-  local root = vim.fs.root(0, '.git')
-  local todo = root and vim.fs.joinpath(root, 'TODO.md')
-  if todo and vim.uv.fs_stat(todo) and not notes().contains(todo) then list[#list + 1] = todo end
+  local todo = project_todo()
+  if todo and not notes().contains(todo) then list[#list + 1] = todo end
   return list
 end
 
@@ -67,9 +79,14 @@ function M.tasks(kind)
   if vim.fn.executable('rg') == 1 then
     -- --no-config: a personal ripgreprc must not add --hidden (.scratch/).
     local cmd = { 'rg', '--no-config', '--vimgrep', '--sort', 'path', '--glob', '*.md', '-e', pattern, '--' }
-    local res = vim.system(vim.list_extend(cmd, paths), { text = true }):wait()
-    -- 1 = no match; 2 = an error (e.g. unreadable file), matches may still follow.
-    if res.code > 1 then vim.notify('rg: ' .. vim.trim(res.stderr or ''), vim.log.levels.WARN) end
+    local res = vim.system(vim.list_extend(cmd, paths), { text = true }):wait(10000)
+    -- 1 = no match; 2 = an error (e.g. unreadable file), matches may still follow;
+    -- 124 = still running after 10 s, so wait() killed it.
+    if res.code == 124 then
+      vim.notify('rg: stopped after 10 s, the list may be incomplete', vim.log.levels.WARN)
+    elseif res.code > 1 then
+      vim.notify('rg: ' .. vim.trim(res.stderr or ''), vim.log.levels.WARN)
+    end
     local lines = vim.split(res.stdout or '', '\n', { trimempty = true })
     vim.fn.setqflist({}, ' ', { title = title, lines = lines, efm = '%f:%l:%c:%m' })
   else

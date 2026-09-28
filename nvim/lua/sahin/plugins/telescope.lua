@@ -3,7 +3,10 @@ local util = require('sahin.util')
 local telescope = util.try_require('telescope.nvim', 'telescope')
 if not telescope then return {} end
 
-telescope.setup({})
+-- check_mime_type off: for files without a known filetype the previewer would
+-- run io.popen('file --mime-type -b "<path>"'), a shell string, so a cloned
+-- file named like $(cmd) would run cmd. Such files are shown as plain text.
+telescope.setup({ defaults = { preview = { check_mime_type = false } } })
 
 local builtin = require('telescope.builtin')
 local map = util.map
@@ -17,6 +20,7 @@ map('n', '<leader>sd', builtin.diagnostics, 'Search: diagnostics')
 map('n', '<leader>sr', builtin.resume, 'Search: resume last search')
 map('n', '<leader>s.', builtin.oldfiles, 'Search: recent files')
 map('n', '<leader>sc', builtin.commands, 'Search: commands')
+map('n', '<leader>ss', builtin.builtin, 'Search: select a telescope picker')
 map('n', '<leader><leader>', builtin.buffers, 'Search: open buffers')
 
 map(
